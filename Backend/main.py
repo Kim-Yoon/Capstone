@@ -35,15 +35,11 @@ import jwt
 from utils.inference import LandmarkClassifier
 from mongo import MongoConnection
 
-
-
 env_path = './.env.yml'
 
 with open(env_path) as f:
     env = yaml.load(f, Loader=yaml.FullLoader)
 
-# # Get OPENAI Model
-# gpt = GPT(openai_key=env['openai'], openai_org=env['openai_org'], model='gpt-3.5-turbo')
 
 # JWT 설정
 SECRET_KEY = env['secret_key']
@@ -72,7 +68,6 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def get_password_hash(password: str):
@@ -93,7 +88,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 async def get_user(email: EmailStr):
     user_data = await collection.find_one({"email": email})
-    print(user_data)
     if user_data:
         return UserInDB(**user_data)
 
@@ -138,8 +132,6 @@ async def fetch_initialfItems():
     async for doc in festivals.aggregate(festivals_pipeline):
         f_item[doc['_id']] = doc['name']
     return f_item
-
-
 
 async def authenticate_token(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -187,17 +179,15 @@ async def upload_image(file: UploadFile = File(...)):
         image_content = await file.read()
         image = Image.open(io.BytesIO(image_content))
         results = lc.inference(image)
-        print(results)
         #image.save(f"{file.filename}")  # 이미지를 서버에 저장
         #bard_answer = bard.get_answer(f'{prefix} 대한민국의 문화재인 {results[0]}에 대한 설명을 200자 이상으로 요약해 줘. "물론입니다"라는말 하지마. {suffix}')
 
         return JSONResponse(content={"filename": file.filename, 
                                      "detail": "Image uploaded", 
                                      "prediction": results})
-                                    #  "bard": bard_answer['content']}
+                                    
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
-
 
 @app.post("/uploadfile/")
 async def create_upload_file(file: UploadFile = File(...)):
@@ -209,12 +199,10 @@ async def create_upload_file(file: UploadFile = File(...)):
 
 @app.post("/default_searchlist/")
 async def create_upload_file(file: UploadFile = File(...)):
-    #with open(os.path.join("uploads", file.filename), "wb") as buffer:
     with open(file.filename, "wb") as buffer:
         contents = await file.read()  # async read
         buffer.write(contents)
     return {"filename": file.filename}
-
 
 @app.get("/upload_page/", response_class=HTMLResponse)
 async def read_item():
@@ -226,7 +214,7 @@ async def read_item():
 async def read_festival_item(f_date : str):
     results = []
     collection = db['festivals']
-    
+ 
     # check f_date if validate for the date type '%Y-%m-%d'
     if datetime.strptime(f_date, '%Y-%m-%d'):
         _filter = {'date_start': {'$lte': f'{f_date}'}, 'date_end': {'$gte': f'{f_date}'}}
@@ -244,7 +232,6 @@ async def read_festival_item(f_date : str):
 
 @app.get("/upload_fdetail/{f_id}")
 async def read_fdetail(f_id: str):
-    print(f_id)
     collection = db['festivals']
     if type(f_id) is not int:
         try:
@@ -253,12 +240,10 @@ async def read_fdetail(f_id: str):
             return JSONResponse(content={"error": str(e)}, status_code=400)
     document = await collection.find_one({'_id' : f_id})
     document['_id'] = str(document['_id'])
-    print(document)
     return JSONResponse(content=document)
 
 @app.get("/upload_lmdetail/{class_number}")
 async def read_lmdetail(class_number : int):
-
     collection = db['landmarks']
     if type(class_number) is not int:
         try:
@@ -280,7 +265,6 @@ async def read_lmdetail(class_number : int):
 
     if images_list:
         document['image'] = images_list
-    # print(document['image'])
 
     document['_id'] = str(document['_id'])
     
@@ -294,15 +278,11 @@ async def read_item(keyword: str):
         f_finder = Finder('festivals')
         lm_item = await lm_finder.send_result(keyword)
         f_item = await f_finder.send_result(keyword)
-        print(f"lm : {lm_item}")
-        print(f"lm : {f_item}")
         return JSONResponse(content={"lm_item": lm_item, 
                                      "f_item": f_item})
-
     except Exception as e:
         traceback.print_exc()
         return JSONResponse(content={"error": str(e)}, status_code=400)
-
 
 @app.get("/fetch_initialItems")
 async def initial_item():
@@ -318,10 +298,8 @@ async def initial_item():
     async for doc in landmarks.aggregate(pipeline):
         lm_item[doc['_id']] = doc['name']
     f_items = await fetch_initialfItems()
-    print(f_items)
     return JSONResponse(content={"lm_item": lm_item, 
                                  "f_item": f_items})
-
 
 @app.get("/add_wishlist/{class_number}")
 async def add_wishlist(class_number : int, email_data: TokenData = Depends(authenticate_token)):
@@ -332,7 +310,6 @@ async def add_wishlist(class_number : int, email_data: TokenData = Depends(authe
     item = await users.find_one(
         {"email": email_address, "wish_list": {"$elemMatch": {"landmark": class_number}}}
     )
-    print(item)
     
     # 만약 class_number가 이미 존재한다면, 이미 추가되었다는 메시지를 반환
     if item:
@@ -361,30 +338,23 @@ async def add_complete(class_number : int, email_data: TokenData = Depends(authe
     item = await users.find_one(
         {"email": email_address, "complete_list": {"$elemMatch": {"landmark": class_number}}}
     )
-    print(item)
-    
     # 만약 class_number가 이미 존재한다면, 이미 추가되었다는 메시지를 반환
     if item:
-        print("exist")
-        return {"message": "Already add to complete_list"}
-        
+        return {"message": "Already add to complete_list"}     
     else:
         await landmarks.update_one(
             {"_id": class_number},
             {"$push": {"complete_list": email_address}}
-        )
-        
+        )        
         await users.update_one(
             {"email": email_address},
             {"$push": {"complete_list.landmark": class_number}}
         )
-
         return {"message": "complete_list has been updated"}
 
 
 @app.get("/add_fwishlist/{class_number}")
 async def add_wishlist(class_number : int, email_data: TokenData = Depends(authenticate_token)):
-    
     users = db['users']
     festivals = db['festivals']
     email_address = email_data.email
@@ -392,27 +362,20 @@ async def add_wishlist(class_number : int, email_data: TokenData = Depends(authe
     item = await users.find_one(
         {"email": email_address, "wish_list": {"$elemMatch": {"festival": class_number}}}
     )
-    print(item)
-    
     # 만약 class_number가 이미 존재한다면, 이미 추가되었다는 메시지를 반환
     if item:
         print("exist")
-        return {"message": "Already add to wish_list"}
-        
+        return {"message": "Already add to wish_list"}        
     else:
         await festivals.update_one(
             {"_id": class_number},
             {"$push": {"wish_list": email_address}}
-        )
-        
+        )      
         await users.update_one(
             {"email": email_address},
             {"$push": {"wish_list.festival": class_number}}
         )
-
         return {"message": "wishlist has been updated"}
-
-
 
 @app.get("/myWishList")
 async def show_myWishList(email_data: TokenData = Depends(authenticate_token)):
@@ -433,8 +396,6 @@ async def show_myWishList(email_data: TokenData = Depends(authenticate_token)):
         festival = await festivals.find_one({"_id": wish_list})
         class_name = festival['name']
         f_wish[wish_list] = class_name
-    print(lm_wish)
-    print(f_wish)
     return JSONResponse(content={"lm_item": lm_wish, 
                                      "f_item": f_wish})
                                     
@@ -456,8 +417,6 @@ async def show_myWishList(email_data: TokenData = Depends(authenticate_token)):
         festival = await festivals.find_one({"_id": complete_list})
         class_name = festival['name']
         f_complete[complete_list] = class_name
-    print(lm_complete) 
-    print(f_complete)
     return JSONResponse(content={"lm_item": lm_complete, 
                                      "f_item": f_complete})
 
@@ -500,10 +459,8 @@ async def show_myWishList(id : int, email_data: TokenData = Depends(authenticate
         {"$pull": {"wishl_ist.festival": id }}
     )
     return "remove it"
-
-
+    
 ###### 로그인 기능 구현 부분 ######
-
 with open(env_path) as f:
     env = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -514,8 +471,6 @@ mongo_client = AsyncIOMotorClient(env['mongo']['uri'])
 db = mongo_client['example']
 collection = db['users']
 test_collection = db['landmarks']
-
-
 
 # JWT 설정
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -533,20 +488,12 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
-    print(access_token)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
 @app.post("/signup")
 async def signup(name: str = Form(...), email: str = Form(...), password: str = Form(...)):
-    user = UserCreate(name= name, email=email, password=password)
-    print(user.name)
-    # if await get_user(user.email):
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Email already registered",
-    #     )
-    
+    user = UserCreate(name= name, email=email, password=password)    
     hashed_password = get_password_hash(user.password)
     try:
         user_data = {
@@ -567,50 +514,15 @@ async def signup(name: str = Form(...), email: str = Form(...), password: str = 
             detail="Email already registered",
         )
     return {"email": user.email}
-
-# @app.get("/signup", response_class=HTMLResponse)
-# async def get_signup_page():
-#     with open('static/signup.html', 'r') as f:
-#         html_content = f.read()
-#     return HTMLResponse(content=html_content, status_code=200)
-
-# @app.get("/login", response_class=HTMLResponse)
-# async def get_login_page():
-#     with open('static/login.html', 'r') as f:
-#         html_content = f.read()
-#     return HTMLResponse(content=html_content, status_code=200)
-
-@app.get("/home/yongjang/datasets/landmark/{filename}")
-async def get_image(filename: str):
-    file_path = f"/home/yongjang/datasets/landmark/{filename}" # 실제 이미지 파일 경로로 변경해주세요.
-    replace_path = f"/home/yongjang/datasets/landmark/replace.jpg"
     
-    if os.path.exists(file_path):
-        return FileResponse(file_path, media_type="image/jpeg")
-    else:
-        return FileResponse(replace_path, media_type="image/jpeg")
-
-@app.get("/home/yongjang/datasets/festival/{filename}")
-async def get_image(filename: str):
-    file_path = f"/home/yongjang/datasets/festival/{filename}" # 실제 이미지 파일 경로로 변경해주세요.
-    replace_path = f"/home/yongjang/datasets/landmark/replace.jpg"
-    
-    if os.path.exists(file_path):
-        return FileResponse(file_path, media_type="image/jpeg")
-    else:
-        return FileResponse(replace_path, media_type="image/jpeg")
-
 @app.post("/update_profile")
 async def update_profile(old_password: str = Form(...), new_password: str = Form(...), email_data: TokenData = Depends(authenticate_token)):
     users = db['users']
     # 데이터베이스에서 사용자의 해싱된 현재 비밀번호를 가져옴
     user_data = await users.find_one({"email": email_data.email})
     if not user_data:
-        print("User not found")
-        return "User not found"
-    
+        return "User not found"  
     current_hashed_pwd = user_data["hashed_password"]
-    print(current_hashed_pwd)
     try:
         # 사용자로부터 입력받은 현재 비밀번호와 데이터베이스의 해싱된 비밀번호를 비교
         if verify_password(old_password, current_hashed_pwd):
@@ -621,22 +533,6 @@ async def update_profile(old_password: str = Form(...), new_password: str = Form
             print("Password updated successfully")
             return "Password updated successfully"
     except Exception as e:
-        print(e)
-        print("Error occurred during password update")
         return "Error occurred during password update"
-
     else:
-        print("Incorrect current password")
         return "Incorrect current password"
-
-# # https://python.langchain.com/docs/get_started/quickstart
-# @app.get("/ask/{q}", response_class=HTMLResponse)
-# async def ask_gpt(q: str):
-#     try:
-#         print(f'Question : {q}')
-#         gpt_answer = gpt.get_answer(prompt=q)
-        
-#         return JSONResponse(content={"response": gpt_answer})
-#     except Exception as e:
-#         print(e)
-#         return JSONResponse(content={"error": str(e)}, status_code=400)
