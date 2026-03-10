@@ -50,7 +50,7 @@ def main():
     model = models.model = models.resnet50(weights=None)
     num_ftrs = model.fc.in_features
     model.fc = torch.nn.Linear(num_ftrs, 188)
-    model.load_state_dict(torch.load('/home/yongjang/projects/LMClassification/LandmarkClassification/model/best_model_55.pth'))
+    model.load_state_dict(torch.load('/projects/LMClassification/LandmarkClassification/model/best_model_55.pth'))
 
     # 데이터 전처리 정의
     test_transform = transforms.Compose([
